@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""xmind2pdf — 兼容入口: mapconv -t pdf (思维导图 -> PDF)"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+    os.path.realpath(__file__))))
+from mapconv.cli_common import run
+
+run(sys.argv[1:], to="pdf")

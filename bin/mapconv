@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""mapconv — 思维导图格式转换: XMind / FreeMind (.mm) -> Markdown / PDF
+
+用法:
+    mapconv '*.xmind' '*.mm'                 # 默认同时生成 .md 和 .pdf
+    mapconv -t md  a.xmind b.mm              # 只生成 Markdown
+    mapconv -t pdf '*.xmind' -o out/         # 只生成 PDF
+    mapconv --img-map imgs.json -t md '*.xmind'
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+    os.path.realpath(__file__))))
+
+from mapconv.cli_common import run
+
+if __name__ == "__main__":
+    run(sys.argv[1:])
