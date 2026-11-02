@@ -16,10 +16,12 @@ def esc_title(t):
 
 
 class MdWriter:
-    def __init__(self, assets_dir, rel_out, img_map):
+    def __init__(self, assets_dir, rel_out, img_map, ocr_enabled=False):
         self.assets_dir = assets_dir
         self.rel_out = rel_out          # md -> assets 的相对路径
         self.img_map = img_map or {}
+        self.ocr_enabled = ocr_enabled  # 自动 OCR 判型 (文字截图 -> 引用文字)
+        self.ocr_stats = {"text": 0, "image": 0}
         self.lines = []
         self.anchors = {}               # node id -> anchor
         self.backlinks = {}             # node id -> [(anchor, title)]
@@ -35,7 +37,15 @@ class MdWriter:
                 return "icon", None
             if entry.get("type") == "text":
                 return "text", entry.get("ocr", "")
-        return "image", None            # 默认: 高清原图
+            return "image", None         # 显式清单优先
+        if self.ocr_enabled:
+            from . import ocr
+            r = ocr.classify(node.img_bytes)
+            self.ocr_stats[r["kind"]] += 1
+            if r["kind"] == "text":
+                return "text", r["ocr"]
+            return "image", None
+        return "image", None             # 默认: 高清原图
 
     def emit_image(self, node, source_name):
         if not node.image or not node.img_bytes:
@@ -117,13 +127,13 @@ class MdWriter:
             self.write_node(c, depth + 1, source_name)
 
 
-def convert(path, out_path, sheets, rels, img_map=None):
-    """生成 Markdown; 返回 sheet 数。"""
+def convert(path, out_path, sheets, rels, img_map=None, ocr_enabled=False):
+    """生成 Markdown; 返回 (sheet 数, OCR 统计)。"""
     base = os.path.splitext(os.path.basename(out_path))[0]
     assets_dir = os.path.join(os.path.dirname(out_path), base + ".assets")
     source_name = os.path.basename(path)
 
-    w = MdWriter(assets_dir, base + ".assets", img_map)
+    w = MdWriter(assets_dir, base + ".assets", img_map, ocr_enabled)
     for i, (stitle, root, _structure) in enumerate(sheets):
         if not root.title:
             root.title = base
@@ -136,7 +146,7 @@ def convert(path, out_path, sheets, rels, img_map=None):
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(w.lines).strip()) + "\n"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(text)
-    return len(sheets)
+    return len(sheets), w.ocr_stats
 
 
 def load_img_map(path):

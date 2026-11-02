@@ -16,18 +16,30 @@
 
 - **文字**：节点标题按 H1–H6 层级展开（更深层用列表），备注转 `>` 引用块，标签转行内代码，概要（大括号）节点以 `〔概要〕` 前缀保留
 - **图片**：PDF 中渲染进节点框；Markdown 中把原始字节无损拷贝到 `<文件名>.assets/` 并引用（高清原图，不压缩）；20px 级装饰小图标自动跳过
+- **OCR 自动判型**（`--ocr`）：对每张内嵌图片用 tesseract 识别——纯文字截图自动转成 Markdown 引用文字，K 线/走势等图表仍嵌高清原图；结果按图片哈希缓存，重复转换不耗时。也可用 `--img-map` 手工指定
 - **双链**：XMind 关系线（relationship）与 FreeMind arrowlink 转为 Markdown 双向锚点超链接——两端节点各带 `<a id>` 锚点并互相 `↔️ [标题](#anchor)`
 - **PDF 排版**：根节点居中、子树左右分栏（按子树高度自动平衡，尊重 FreeMind 的 POSITION 与 XMind 的结构类）、彩色分支、贝塞尔连线、CJK 逐字换行（标点悬挂），超大导图自动等比缩放至 PDF 单页上限
 - **中文字体**：自动挑选本机可用字体（微软雅黑 / 文泉驿 / Noto CJK），Noto 的 CFF 轮廓会用 fontTools 自动转 TrueOutline 并缓存
 
 ### 安装
 
-依赖：Python 3.8+，`reportlab`，`Pillow`（PDF 输出）；Markdown 输出零第三方依赖（Pillow 可选，用于跳过小图标）。`fontTools` 可选（仅 Noto CJK 转换时需要）。
+依赖用 [uv](https://docs.astral.sh/uv/) 管理（Python ≥3.9；`reportlab`、`pillow`、`fonttools`，见 `pyproject.toml` / `uv.lock` / `requirements.txt`）。OCR 为可选功能，需要系统 tesseract 与中文语言包。
 
 ```bash
-pip install reportlab pillow
+# 系统依赖 (仅 --ocr 需要): Arch: pacman -S tesseract tesseract-data-chi_sim
+#                            Debian: apt install tesseract-ocr tesseract-ocr-chi-sim
+
 git clone https://github.com/dwdcth/selftools.git
-cd selftools && ./install.sh     # 软链 mapconv 到 ~/.local/bin
+cd selftools
+
+# 方式一: uv (推荐)
+uv sync                                    # 建虚拟环境并安装依赖 (uv.lock 锁定版本)
+uv run bin/mapconv '*.xmind' '*.mm'        # 经 uv 环境运行
+./install.sh                               # 或软链命令 (配合系统 python)
+
+# 方式二: pip
+pip install -r requirements.txt            # 由 uv export 生成的锁版本清单
+./install.sh
 ```
 
 ### 用法
@@ -36,11 +48,16 @@ cd selftools && ./install.sh     # 软链 mapconv 到 ~/.local/bin
 mapconv '*.xmind' '*.mm'              # 同时生成 .md + .pdf（同名，源文件同目录）
 mapconv -t md  a.xmind b.mm           # 只要 Markdown
 mapconv -t pdf '*.xmind' -o out/      # 只要 PDF，输出到 out/
+mapconv -t md --ocr '*.xmind'         # 文字截图自动 OCR 成文字, 图表嵌原图
 ```
 
 Markdown 输出会在 `.md` 旁生成 `<名>.assets/` 目录存放高清原图。
 
-可选 `--img-map`：默认所有内嵌图片按高清原图嵌入；如果某张图其实是**文字截图**，想转成文字而不是图片，可以提供清单：
+### OCR 判型
+
+`--ocr` 对每张图片：tesseract (chi_sim+eng) 识别 + 彩色像素统计 → 有效中文 ≥60 字、中文占比 ≥35% 且彩色像素 <10% 判为**文字截图**（转成 `>` 引用文字，并自动去掉 OCR 加在中文里的空格）；否则视为**图表**（保留高清原图）。识别结果按图片字节哈希缓存于 `~/.cache/mapconv/ocr/`，同一张图只识别一次。
+
+需要手工覆盖判定时用 `--img-map`（优先级高于自动识别）：
 
 ```json
 {
@@ -64,8 +81,9 @@ mapconv/
 ├── parser.py   # 统一解析: XMind 8 / XMind Zen / FreeMind -> Node 树
 ├── mdout.py    # Markdown 输出 (大纲/图片资产/双向锚点链接)
 ├── pdfout.py   # PDF 输出 (树形布局渲染)
+├── ocr.py      # OCR 判型: 文字截图 -> 文字, 图表 -> 保留原图 (tesseract + 缓存)
 └── fonts.py    # PDF 中文字体注册
-bin/mapconv     # CLI 入口
+bin/mapconv     # CLI 入口 (xmind2pdf / map2md 为兼容别名)
 ```
 
 ## License

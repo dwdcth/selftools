@@ -1,0 +1,12 @@
+[project]
+name = "selftools-mapconv"
+version = "1.1.0"
+description = "mapconv: 思维导图转换 (XMind / FreeMind -> Markdown / PDF)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "reportlab>=3.6",
+    "pillow>=9.0",
+    "fonttools>=4.30",
+]
