@@ -1,6 +1,6 @@
 # selftools
 
-个人自用小工具集。当前包含 **mapconv** —— 思维导图格式转换命令行工具。
+个人自用小工具集。当前包含 **mapconv**（思维导图格式转换命令行工具）与 **md2pdf**（Markdown 转 PDF）。
 
 ## mapconv: XMind / FreeMind → Markdown / PDF
 
@@ -84,6 +84,21 @@ mapconv/
 ├── ocr.py      # OCR 判型: 文字截图 -> 文字, 图表 -> 保留原图 (tesseract + 缓存)
 └── fonts.py    # PDF 中文字体注册
 bin/mapconv     # CLI 入口 (xmind2pdf / map2md 为兼容别名)
+```
+
+## md2pdf: Markdown → PDF（远程图片本地化）
+
+单文件脚本 `bin/md2pdf`，把 Markdown 文章转成可读性好的 PDF，同时把远程图片下载到本地：
+
+- **图片下载**：解析 `![…](…)` 及 `[![缩略图](…)](原图…)` 链接式图片，**优先下载原图**（而非缩略图），按 URL 去重、失败重试 3 次，保存到 `<文件名>_images/`
+- **中文排版**：A4 版式、微软雅黑/Noto CJK 字体、图片居中带题注、引用块/代码块样式；顺带清理论坛导出残留（空锚点、`\*\*` 转义）
+- **矢量 PDF**：Chrome/Chromium headless 打印，文字可选中、缩放不糊；图片与图注以不可分割的原子块排版，不会被拆到两页
+
+```bash
+pip install markdown requests          # Python 依赖 (需系统 Chrome/Chromium)
+
+bin/md2pdf '文章.md'                   # -> 文章.pdf + 文章_images/
+bin/md2pdf in.md -o out.pdf --keep-html
 ```
 
 ## License
